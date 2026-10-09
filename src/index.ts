@@ -58,15 +58,11 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
 
   try {
-    
     const page = await browser.newPage({
       viewport: { width: 375, height: 812 },
     });
 
-    const consoleErrors: string[] = [];
-    const pageErrors: string[] = [];
-    const failedImages: string[] = [];
-
+    // Собираем ошибки браузера и неудачные запросы изображений.
     page.on("console", (message) => {
       if (message.type() === "error") {
         consoleErrors.push(message.text());
@@ -87,6 +83,7 @@ async function main() {
     console.log(`URL: ${url.href}`);
     console.log("Viewport: 375 x 812\n");
 
+    // Открываем сайт.
     const response = await page.goto(url.href, {
       waitUntil: "domcontentloaded",
       timeout: 30000,
@@ -108,9 +105,6 @@ async function main() {
     );
 
     // Проверяем внутренние ссылки.
-
-
-    // Проверяем внутренние ссылки.
     const links = await page.locator("a[href]").evaluateAll((elements) =>
       elements.map((element) => (element as HTMLAnchorElement).href)
     );
@@ -118,6 +112,7 @@ async function main() {
     const uniqueLinks = [...new Set(links)].filter((href) => {
       try {
         const linkUrl = new URL(href);
+
         return (
           ["http:", "https:"].includes(linkUrl.protocol) &&
           linkUrl.origin === url.origin
@@ -126,13 +121,14 @@ async function main() {
         return false;
       }
     });
+
     const linksToCheck = uniqueLinks.filter((link) => {
-  try {
-    return new URL(link).href !== url.href;
-  } catch {
-    return false;
-  }
-});
+      try {
+        return new URL(link).href !== url.href;
+      } catch {
+        return false;
+      }
+    });
 
     console.log(`\nInternal links found: ${uniqueLinks.length}`);
 
@@ -156,12 +152,17 @@ async function main() {
           `${passed ? "[PASS]" : "[FAIL]"} Link returned ${linkStatus}: ${link}`
         );
       } catch {
-        addCheck("FAIL", "Internal link", `Could not access: ${link}`);
+        addCheck(
+          "FAIL",
+          "Internal link",
+          `Could not access: ${link}`
+        );
+
         console.log(`[FAIL] Could not access link: ${link}`);
       }
     }
 
-    // Проверяем изображения.
+    // Проверяем изображения, которые не загрузились.
     const brokenImages = await page.locator("img").evaluateAll((images) =>
       images
         .filter((image) => {
@@ -183,6 +184,7 @@ async function main() {
       console.log(`[FAIL] Image did not load: ${image}`);
     }
 
+    // Учитываем неудачные сетевые запросы изображений.
     addCheck(
       failedImages.length ? "FAIL" : "PASS",
       "Failed image requests",
@@ -191,9 +193,7 @@ async function main() {
         : "No failed image requests"
     );
 
-    // Проверяем горизонтальное переполнение.
-   
-    // Проверяем горизонтальное переполнение.
+    // Проверяем горизонтальное переполнение на мобильном экране.
     const overflow = await page.evaluate(() => ({
       pageWidth: document.documentElement.scrollWidth,
       viewportWidth: document.documentElement.clientWidth,
@@ -215,20 +215,21 @@ async function main() {
       `[${mobileCheck.status}] ${mobileCheck.title}: ${mobileCheck.details}`
     );
 
-
-
-
     // Проверяем ошибки консоли и JavaScript.
     addCheck(
       consoleErrors.length ? "FAIL" : "PASS",
       "Browser console",
-      consoleErrors.length ? consoleErrors.join("\n") : "No console errors"
+      consoleErrors.length
+        ? consoleErrors.join("\n")
+        : "No console errors"
     );
 
     addCheck(
       pageErrors.length ? "FAIL" : "PASS",
       "JavaScript exceptions",
-      pageErrors.length ? pageErrors.join("\n") : "No JavaScript exceptions"
+      pageErrors.length
+        ? pageErrors.join("\n")
+        : "No JavaScript exceptions"
     );
 
     console.log(`\nConsole errors: ${consoleErrors.length}`);
@@ -249,9 +250,17 @@ async function main() {
   }
 
   // Формируем HTML-отчёт.
-  const failedCount = checks.filter((check) => check.status === "FAIL").length;
-  const passedCount = checks.filter((check) => check.status === "PASS").length;
-  const warningCount = checks.filter((check) => check.status === "WARN").length;
+  const failedCount = checks.filter(
+    (check) => check.status === "FAIL"
+  ).length;
+
+  const passedCount = checks.filter(
+    (check) => check.status === "PASS"
+  ).length;
+
+  const warningCount = checks.filter(
+    (check) => check.status === "WARN"
+  ).length;
 
   const rows = checks
     .map(
@@ -271,18 +280,43 @@ async function main() {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Website QA Inspector Report</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 1100px; margin: 40px auto; padding: 0 20px; color: #222; }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1100px;
+      margin: 40px auto;
+      padding: 0 20px;
+      color: #222;
+    }
     h1 { margin-bottom: 8px; }
     .url { overflow-wrap: anywhere; color: #555; }
-    .summary { display: flex; gap: 12px; flex-wrap: wrap; margin: 24px 0; }
-    .metric { padding: 14px 18px; border: 1px solid #ddd; border-radius: 8px; }
+    .summary {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 24px 0;
+    }
+    .metric {
+      padding: 14px 18px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
     table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; vertical-align: top; }
+    th, td {
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      vertical-align: top;
+    }
     th { background: #f5f5f5; }
     .pass { color: #16803c; font-weight: bold; }
     .fail { color: #c62828; font-weight: bold; }
     .warn { color: #9a6700; font-weight: bold; }
-    pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; margin: 0; }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-family: inherit;
+      margin: 0;
+    }
   </style>
 </head>
 <body>
@@ -295,17 +329,26 @@ async function main() {
     <div class="metric">WARN: <strong>${warningCount}</strong></div>
   </div>
   <table>
-    <thead><tr><th>Status</th><th>Check</th><th>Details</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Status</th>
+        <th>Check</th>
+        <th>Details</th>
+      </tr>
+    </thead>
     <tbody>${rows}</tbody>
   </table>
 </body>
 </html>`;
 
   const reportPath = resolve(process.cwd(), "report.html");
+
   writeFileSync(reportPath, report, "utf8");
 
   console.log(`\nHTML report saved: ${reportPath}`);
-  console.log(`Results: ${passedCount} PASS, ${failedCount} FAIL, ${warningCount} WARN`);
+  console.log(
+    `Results: ${passedCount} PASS, ${failedCount} FAIL, ${warningCount} WARN`
+  );
 
   process.exitCode = failedCount > 0 ? 1 : 0;
 }
