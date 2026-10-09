@@ -1,0 +1,30 @@
+{
+  "name": "website-qa",
+  "version": "1.0.0",
+  "description": "Automated website quality inspector",
+  "main": "index.js",
+  
+
+"scripts": {
+  "test": "npm run test:all",
+  "test:unit": "vitest run src/index.test.ts",
+  "test:integration": "start-server-and-test \"http-server test-site -p 8080\" http://127.0.0.1:8080 \"vitest run src/integration.test.ts\"",
+  "test:all": "npm run test:unit && npm run test:integration"
+},
+
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "http-server": "^14.1.1",
+    "start-server-and-test": "^3.0.13",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "playwright": "^1.0.0"
+  }
+}
