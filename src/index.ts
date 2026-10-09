@@ -194,26 +194,48 @@ async function main() {
     );
 
     // Проверяем горизонтальное переполнение на мобильном экране.
-    const overflow = await page.evaluate(() => ({
-      pageWidth: document.documentElement.scrollWidth,
-      viewportWidth: document.documentElement.clientWidth,
-    }));
+    
+    // Проверяем адаптивность на трёх размерах экрана.
+    const viewports = [
+      { name: "Mobile", width: 375, height: 812 },
+      { name: "Tablet", width: 768, height: 1024 },
+      { name: "Desktop", width: 1440, height: 900 },
+    ];
 
-    const mobileCheck = checkMobileLayout(
-      overflow.pageWidth,
-      overflow.viewportWidth,
-      status >= 200 && status < 400
-    );
+    for (const viewport of viewports) {
+      await page.setViewportSize({
+        width: viewport.width,
+        height: viewport.height,
+      });
 
-    addCheck(
-      mobileCheck.status,
-      mobileCheck.title,
-      mobileCheck.details
-    );
+      // Даём браузеру обновить раскладку после изменения размера.
+      await page.evaluate(
+        () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+      );
 
-    console.log(
-      `[${mobileCheck.status}] ${mobileCheck.title}: ${mobileCheck.details}`
-    );
+      const overflow = await page.evaluate(() => ({
+        pageWidth: document.documentElement.scrollWidth,
+        viewportWidth: document.documentElement.clientWidth,
+      }));
+
+      const layoutCheck = checkMobileLayout(
+        overflow.pageWidth,
+        overflow.viewportWidth,
+        status >= 200 && status < 400
+      );
+
+      const check: Check = {
+        ...layoutCheck,
+        title: `${viewport.name} layout (${viewport.width}px)`,
+      };
+
+      addCheck(check.status, check.title, check.details);
+
+      console.log(
+        `[${check.status}] ${check.title}: ${check.details}`
+      );
+    }
+
 
     // Проверяем ошибки консоли и JavaScript.
     addCheck(
